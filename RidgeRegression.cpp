@@ -61,39 +61,92 @@ void RidgeRegression::read_data(string filename)
             }
         }
     }
-    this->data = X;
-    this->label = Y;
+    data = X;
+    label = Y;
     cout << "data: " << data.rows() << " " << data.cols() << endl;
-    cout << "label: " << label.rows() << " " << label.cols() << endl;   
-    //print_data();
-    //print_label(); 
+    cout << "label: " << label.rows() << " " << label.cols() << endl;
 }
 
-RidgeRegression::RidgeRegression(string filename, int iteration) {
+RidgeRegression::RidgeRegression(string filename, int iteration, int epsilons) {
     read_data(filename);
-    this->theta = VectorXd::Zero(data.cols()); // initialize
     this->iteration = iteration;    
+    this->epsilon = epsilon;
 }
 
 void RidgeRegression::gradient(double lambda, double learning_rate)
 {
+    theta = VectorXd::Zero(data.cols());
     // 迭代更新模型参数
     for (int iter = 0; iter < iteration; ++iter)
     {
         // 计算损失函数
-        double loss = 0.5 * (data * theta - label).squaredNorm() / data.rows() + 0.5 * lambda * theta.squaredNorm();
-        std::cout << "Loss at iteration " << iter << ": " << loss << std::endl;
+        double loss = 0.5 * (data * theta - label).squaredNorm() / data.rows() + lambda * theta.squaredNorm();
+        //std::cout << "Loss at iteration " << iter << ": " << loss << std::endl;
 
         // 计算梯度
-        VectorXd gradient = (data.transpose() * (data * theta - label)) / data.rows() + lambda * theta;
-        std::cout << "Gradient at iteration " << iter << ": " << std::endl;
-        for(int i = 0; i < gradient.size(); i++) {
+        VectorXd gradient = (data.transpose() * (data * theta - label) + lambda * theta) / data.rows();
+        /*if(gradient.norm() < epsilon) {
+            cout << iter << " iterations" << endl;
+            break;
+        }*/
+        //std::cout << "Gradient at iteration " << iter << ": " << std::endl;
+        /*for(int i = 0; i < gradient.size(); i++) {
             cout << gradient(i) << " ";
         }
         cout << endl;
-
+        */
         // 更新模型参数
         theta = theta - learning_rate * gradient;
+    }
+}
+
+void RidgeRegression::conjucate(double lambda, double learning_rate)
+{
+    theta = VectorXd::Zero(data.cols());
+
+    MatrixXd Q = data.transpose() * data;
+    VectorXd g1;
+    VectorXd theta1;
+    VectorXd d1;
+    double a;
+    
+    VectorXd g = (data.transpose() * (data * theta - label) + lambda * theta) / data.rows();
+    if(g.norm() == 0) return;
+    
+    VectorXd d = -g;
+    /*
+    double a = -((g.transpose() * d)/(d.transpose() * Q * d))(0, 0); // length of step
+    //cout << a1.rows() << " " << a1.cols() << " " << g1.rows() << " " << g1.cols() << endl;
+
+    theta = theta - a*g;
+    VectorXd old_g = g;
+    */
+    // 迭代更新模型参数
+    for (int iter = 0; iter < iteration; ++iter)
+    {
+        //a = ((g.transpose() * d)/(d.transpose() * Q * d))(0, 0); // step length
+
+        // 计算损失函数
+        theta1 = theta + learning_rate*(-g);
+        double loss = 0.5 * (data * theta - label).squaredNorm() / data.rows() + lambda * theta.squaredNorm();
+        //std::cout << "Loss at iteration " << iter << ": " << loss << std::endl;
+        g1 = (data.transpose() * (data * theta1 - label) + lambda * theta1) / data.rows();
+        /*if(g.norm() < epsilon) {
+            cout << iter << " iterations" << endl;
+            break;
+        }*/
+
+        double beta = ((g1.transpose()*g1)/(g.transpose()*g))(0, 0); // Fletcher-Reeves Formula
+        d1 = -g1 + beta*d;
+        //std::cout << "Gradient at iteration " << iter << ": " << g << std::endl;
+        /*if((theta1 - theta).norm() < epsilon) {
+            theta = theta1;
+            cout << iter << " iterations" << endl;
+            break;
+        }*/
+        g = g1;
+        d = d1;
+        theta = theta1;
     }
 }
 
@@ -128,94 +181,19 @@ void RidgeRegression::print_parameter()
 
 /*
 //牛顿法
-MatrixXd newton(MatrixXd feature, MatrixXd label, int iterMax, double sigma, double delta)
+void RidgeRegression::quasi_newton(double lambda, double epsilon, double delta)
 {
-	double epsilon = 0.1;
-	int n = feature.cols();
-	MatrixXd w = MatrixXd::Zero(n, 1);
-	MatrixXd g;
-	MatrixXd G;
-	MatrixXd d;
-	double m;
-	int it = 0;
-	while (it <= iterMax)
-	{
-		g = first_derivative(feature, label, w);
-		if (epsilon >= g.norm())
-		{
-			break;			
-		}
-		G = second_derivative(feature);
-		d = -G.inverse() * g;
-		m = get_min_m(feature, label, sigma, delta, d, w, g);
-		w = w + pow(sigma, m) * d;
-		it++;
-	}
-	return w;
-}
+    theta = VectorXd::Zero(data.cols());
+    int n = data.rows(), m = data.cols();
+    MatrixXd D = MatrixXd::Identity(m, m);
+    while(1){
+        VectorXd g = (data.transpose() * (data * theta - label) + lambda * theta) / data.rows();
+        VectorXd d = -D.inverse()*g;
+        theta = min;
+        if(g.norm() < epsilon) break;
+        g_d = ;
+    }
 
-//获取最小m
-int get_min_m(MatrixXd feature, MatrixXd label, double sigma, double delta, MatrixXd w, MatrixXd d, MatrixXd g)
-{
-	int m = 0;
-	MatrixXd w_new;
-	MatrixXd left;
-	MatrixXd right;
-	while (true)
-	{
-		w_new = w + pow(sigma, m) * d;
-		left = get_error(feature, label, w_new);
-		right = get_error(feature, label, w) + delta * pow(sigma,m) * g.transpose() * d;
-		if (left(0,0) <= right(0,0))
-		{
-			break;
-		}
-		else
-		{
-			m += 1;
-		}
-	}
-	return m;
-}
 
-//计算误差
-MatrixXd get_error(MatrixXd feature, MatrixXd label, MatrixXd w)
-{
-	return (label - feature * w).transpose() * (label - feature * w) / 2;
-}
-
-//一阶导
-MatrixXd first_derivative(MatrixXd feature, MatrixXd label, MatrixXd w)
-{
-	int m = feature.rows();
-	int n = feature.cols();
-	MatrixXd g = MatrixXd::Zero(n, 1);
-	MatrixXd err;
-	for (int i = 0; i < m; i++)
-	{
-		err = label.block(i,0,1,1) - feature.row(i) * w;
-		for (int j = 0; j < n; j++)
-		{
-			g.row(j) -= err * feature(i, j);
-		}
-	}
-	return g;
-}
-
-//二阶导
-MatrixXd second_derivative(MatrixXd feature)
-{
-	int m = feature.rows();
-	int n = feature.cols();
-	MatrixXd G = MatrixXd::Zero(n, n);
-	MatrixXd x_left;
-	MatrixXd x_right;
-	for (int i = 0; i < m; i++)
-	{
-		x_left = feature.row(i).transpose();
-		x_right= feature.row(i);
-		G += x_left * x_right;
-	}
-	return G;
 }
 */
