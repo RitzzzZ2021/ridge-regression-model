@@ -22,12 +22,16 @@ private:
     VectorXd theta; // parameters
     int epsilon;
     int iteration; // training iterations
+    vec loss_array;
     void read_data(string filename);
+    double objective(VectorXd x);
+    double step_size(double a, VectorXd x, VectorXd d, VectorXd g);
     
 public:
     RidgeRegression(string filename, int iteration, int epsilon);
 
-    MatrixXd return_data() { return this->data;}
+    MatrixXd return_data() { return this->data; }
+    vec loss_at_each_iteration() { return loss_array; }
 
     void gradient(double lambda, double learning_rate);
     void conjucate(double lambda, double learning_rate);
@@ -35,8 +39,9 @@ public:
     MatrixXd get_error();
     int get_min_m(double sigma, double delta, MatrixXd w, MatrixXd d, MatrixXd g);
     MatrixXd first_derivative();
-    void quasi_newton(double lambda, double sigma, double delta);
-*/
+    */
+    void quasi_newton(double lambda, double learning_rate);
+
     // for debug
     void print_data();
     void print_label();

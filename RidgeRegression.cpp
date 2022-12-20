@@ -73,46 +73,61 @@ RidgeRegression::RidgeRegression(string filename, int iteration, int epsilons) {
     this->epsilon = epsilon;
 }
 
+double RidgeRegression::objective(VectorXd x) {
+    return (data * x - label).norm();
+}
+
+double RidgeRegression::step_size(double a, VectorXd x, VectorXd d, VectorXd g)
+{
+    double gamma = 0.4;
+    while(objective(x + a*d) > (objective(x) + gamma*a*g.transpose()*d)) {
+        a *= 0.5;
+        x = x + a*d;
+    }
+    return a;
+}
+
+
 void RidgeRegression::gradient(double lambda, double learning_rate)
 {
     theta = VectorXd::Zero(data.cols());
+    double loss = 0;
+    loss_array.clear();
+    double a = learning_rate;
     // 迭代更新模型参数
     for (int iter = 0; iter < iteration; ++iter)
     {
         // 计算损失函数
-        double loss = 0.5 * (data * theta - label).squaredNorm() / data.rows() + lambda * theta.squaredNorm();
+        loss = (0.5 * (data * theta - label).squaredNorm() + lambda * theta.squaredNorm()) / data.rows();
+        loss_array.push_back(loss);
         //std::cout << "Loss at iteration " << iter << ": " << loss << std::endl;
 
         // 计算梯度
-        VectorXd gradient = (data.transpose() * (data * theta - label) + lambda * theta) / data.rows();
-        /*if(gradient.norm() < epsilon) {
+        VectorXd gradient = (data.transpose() * (data * theta - label) + 2* lambda * theta) / data.rows();
+        /*if(gradient.norm() < epsilon && iter > 20) {
             cout << iter << " iterations" << endl;
             break;
         }*/
         //std::cout << "Gradient at iteration " << iter << ": " << std::endl;
-        /*for(int i = 0; i < gradient.size(); i++) {
-            cout << gradient(i) << " ";
-        }
-        cout << endl;
-        */
+        
         // 更新模型参数
-        theta = theta - learning_rate * gradient;
+        a = step_size(a, theta, -gradient, gradient);
+        theta = theta - a * gradient;
     }
 }
 
 void RidgeRegression::conjucate(double lambda, double learning_rate)
 {
     theta = VectorXd::Zero(data.cols());
-
+    double loss = 0;
+    loss_array.clear();
     MatrixXd Q = data.transpose() * data;
     VectorXd g1;
     VectorXd theta1;
     VectorXd d1;
-    double a;
+    double a = learning_rate;
     
-    VectorXd g = (data.transpose() * (data * theta - label) + lambda * theta) / data.rows();
-    if(g.norm() == 0) return;
-    
+    VectorXd g = (data.transpose() * (data * theta - label) + 2 * lambda * theta) / data.rows();
     VectorXd d = -g;
     /*
     double a = -((g.transpose() * d)/(d.transpose() * Q * d))(0, 0); // length of step
@@ -125,13 +140,15 @@ void RidgeRegression::conjucate(double lambda, double learning_rate)
     for (int iter = 0; iter < iteration; ++iter)
     {
         //a = ((g.transpose() * d)/(d.transpose() * Q * d))(0, 0); // step length
-
+        a = step_size(a, theta, d, g);
         // 计算损失函数
-        theta1 = theta + learning_rate*(-g);
-        double loss = 0.5 * (data * theta - label).squaredNorm() / data.rows() + lambda * theta.squaredNorm();
+        theta1 = theta + a*d;
+        loss = (0.5 * (data * theta - label).squaredNorm() + lambda * theta.squaredNorm()) / data.rows();
+        loss_array.push_back(loss);
         //std::cout << "Loss at iteration " << iter << ": " << loss << std::endl;
-        g1 = (data.transpose() * (data * theta1 - label) + lambda * theta1) / data.rows();
-        /*if(g.norm() < epsilon) {
+        g1 = (data.transpose() * (data * theta1 - label) + 2*lambda * theta1) / data.rows();
+        /*if(g.norm() < epsilon && iter > 20) {
+            theta = theta1;
             cout << iter << " iterations" << endl;
             break;
         }*/
@@ -147,6 +164,39 @@ void RidgeRegression::conjucate(double lambda, double learning_rate)
         g = g1;
         d = d1;
         theta = theta1;
+    }
+}
+
+void RidgeRegression::quasi_newton(double lambda, double learning_rate)
+{
+    int n = data.rows(), m = data.cols();
+    double a = learning_rate;
+    double loss = 0;
+    loss_array.clear();
+    theta = VectorXd::Zero(m);
+    VectorXd g = (data.transpose() * (data * theta - label) + lambda * theta) / data.rows();
+    VectorXd theta1, g1, d;
+    MatrixXd H = MatrixXd::Identity(m, m);
+    for(int i = 0; i < iteration; i++){
+        /*if(g.norm() < epsilon && i > 20) {
+            cout << i << " iterations" << endl;
+            break;
+        }*/
+        //std::cout << "Gradient at iteration " << i << ": " << g << std::endl;
+        d = -H*g;
+        a = step_size(a, theta, d, g);
+        theta1 = theta + a * d;
+        loss = (0.5 * (data * theta - label).squaredNorm() + lambda * theta.squaredNorm()) / data.rows();
+        loss_array.push_back(loss);
+        //cout << "data * theta - label" << (data * theta - label) << endl;
+        //if(loss<epsilon) {cout << "=0" <<endl ; break;}
+        //std::cout << "Loss at iteration " << i << ": " << loss << std::endl;
+        g1 = (data.transpose() * (data * theta1 - label) + lambda * theta1) / data.rows();
+        VectorXd s = theta1 - theta;
+        VectorXd y = g1 - g;
+        H = H + (s*s.transpose())/(s.transpose()*y) - (H*y*y.transpose()*H.transpose())/(y.transpose()*H*y);
+        theta = theta1;
+        g = g1;
     }
 }
 
@@ -179,21 +229,3 @@ void RidgeRegression::print_parameter()
     }
 }
 
-/*
-//牛顿法
-void RidgeRegression::quasi_newton(double lambda, double epsilon, double delta)
-{
-    theta = VectorXd::Zero(data.cols());
-    int n = data.rows(), m = data.cols();
-    MatrixXd D = MatrixXd::Identity(m, m);
-    while(1){
-        VectorXd g = (data.transpose() * (data * theta - label) + lambda * theta) / data.rows();
-        VectorXd d = -D.inverse()*g;
-        theta = min;
-        if(g.norm() < epsilon) break;
-        g_d = ;
-    }
-
-
-}
-*/
