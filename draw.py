@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 
-x = list(range(50))
+iteration = 100
+x = list(range(iteration))
 file1 = open("gradient_loss", "r")
 file2 = open("conjucate_loss", "r")
 file3 = open("quasiNewton_loss", "r")
@@ -11,7 +12,14 @@ y1 = [float(i) for i in y_1]
 y2 = [float(i) for i in y_2]
 y3 = [float(i) for i in y_3]
 
-plt.plot(x, y1)
-plt.plot(x, y2, color='red', linestyle='--')
-plt.plot(x, y3, color='green', linestyle=':')
-plt.show()
+
+plt.plot(x, y1, label = 'gradient descent')
+plt.plot(x, y2, label = 'conjugate descent', color='red', linestyle='--')
+plt.plot(x, y3, label = 'quasi-Newton method', color='green', linestyle=':')
+# plt.title('abalone')
+# plt.title('bodyfat')
+plt.title('housing')
+plt.xlabel('iteration')
+plt.ylabel('Mean Square Error')
+plt.legend()
+plt.savefig("result.png")

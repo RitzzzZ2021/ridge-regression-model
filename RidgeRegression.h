@@ -34,12 +34,7 @@ public:
     vec loss_at_each_iteration() { return loss_array; }
 
     void gradient(double lambda, double learning_rate);
-    void conjucate(double lambda, double learning_rate);
-/*
-    MatrixXd get_error();
-    int get_min_m(double sigma, double delta, MatrixXd w, MatrixXd d, MatrixXd g);
-    MatrixXd first_derivative();
-    */
+    void conjugate(double lambda, double learning_rate);
     void quasi_newton(double lambda, double learning_rate);
 
     // for debug
