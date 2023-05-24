@@ -2,6 +2,6 @@
 
 Question: Based on the small datasets abalone, bodyfat, and housing, training aridge regressionmodel with algorithms Gradient Descent, Conjugate Descent, and quasi-Newton method respectively.  
 
-Requirement:Implement algorithms (Gradient Descent, Conjugate Descent, and quasi-Newton method) usingc/c++ programming language.  
+Requirement: Implement algorithms (Gradient Descent, Conjugate Descent, and quasi-Newton method) using c/c++ programming language.  
 
 Datasets can be downloaded from <https://www.csie.ntu.edu.tw/~cjlin/libsvmtools/datasets/regression.html>.
