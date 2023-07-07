@@ -6,7 +6,7 @@ Requirement: Implement algorithms (Gradient Descent, Conjugate Descent, and quas
 
 Datasets can be downloaded from <https://www.csie.ntu.edu.tw/~cjlin/libsvmtools/datasets/regression.html>.
 
-**result**
+**Results**
 
 ![result](result.png)
 
